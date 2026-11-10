@@ -4,8 +4,9 @@
             [ecommerce.http.routes :as routes]))
 
 (defmethod ig/init-key :ecommerce.adapters.http/server [_ {:keys [port db join?]}]
-  (let [handler (routes/routes db)]
-    (jetty/run-jetty handler {:port port :join? join?})))
+  (let [parsed-port (if (string? port) (Integer/parseInt port) (int port))
+        handler (routes/routes db)]
+    (jetty/run-jetty handler {:port parsed-port :join? (boolean join?)})))
 
 (defmethod ig/halt-key! :ecommerce.adapters.http/server [_ server]
   (.stop server))

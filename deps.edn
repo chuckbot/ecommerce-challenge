@@ -17,6 +17,8 @@
   migratus/migratus {:mvn/version "1.6.8"}
   ch.qos.logback/logback-classic {:mvn/version "1.5.6"}}
  :aliases
- {:build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.1" :git/sha "a2ea2c6"}}
+ {:build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
           :ns-default build}
-  :run   {:main-opts ["-m" "ecommerce.core"]}}}
+  :run   {:main-opts ["-m" "ecommerce.core"]}
+  :test  {:extra-paths ["test/clj"]
+          :main-opts ["-m" "ecommerce.test-runner"]}}}
