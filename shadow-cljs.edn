@@ -1,0 +1,11 @@
+{:source-paths ["src/cljs" "src/cljc"]
+ :dependencies [[reagent "1.2.0"]
+                [re-frame "1.4.3"]
+                [cljs-ajax "0.8.4"]]
+ :builds
+ {:app {:target :browser
+        :output-dir "resources/public/js/compiled"
+        :asset-path "/js/compiled"
+        :modules {:main {:init-fn ecommerce.core/init!}}
+        :devtools {:http-root "resources/public"
+                   :http-port 8280}}}}

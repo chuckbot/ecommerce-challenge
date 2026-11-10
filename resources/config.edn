@@ -1,0 +1,9 @@
+{:ecommerce.config/env #profile {:dev :dev :prod :prod}
+ 
+ :ecommerce.adapters.db/pool
+ {:jdbc-url #env ["DATABASE_URL" "jdbc:postgresql://localhost:5432/ecommerce_db?user=ecommerce&password=password123"]}
+ 
+ :ecommerce.adapters.http/server
+ {:port #env ["PORT" 8080]
+  :db #ig/ref :ecommerce.adapters.db/pool
+  :join? false}}
