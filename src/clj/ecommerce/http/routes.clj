@@ -5,29 +5,30 @@
             [reitit.ring.coercion :as coercion]
             [reitit.coercion.malli :as malli-coercion]
             [reitit.ring.middleware.parameters :as parameters]
-            [ecommerce.schema :as schema]))
-
-(defn health-handler [_]
-  {:status 200
-   :body {:status "ok"
-          :timestamp (System/currentTimeMillis)}})
+            [reitit.ring.middleware.multipart :as multipart]
+            [reitit.ring.middleware.muuntaja :as muuntaja-mw]
+            [muuntaja.core :as m]
+            [ecommerce.http.handlers :as handlers]))
 
 (defn routes [db]
   (ring/ring-handler
    (ring/router
     [["/swagger.json"
       {:get {:no-doc true
-             :swagger {:info {:title "E-Commerce API"
-                              :description "Enterprise coding challenge API"}}
+             :swagger {:info {:title "E-Commerce API"}}
              :handler (swagger/create-swagger-handler)}}]
      ["/api"
-      ["/health" {:get {:handler health-handler}}]
       ["/products"
-       ["/import" {:post {:summary "Import products from CSV"
-                          :handler (fn [_] {:status 501 :body "Not implemented"})}}]]]]
+       ["" {:get {:handler (partial handlers/list-products db)}}]
+       ["/search" {:get {:parameters {:query [:map [:q :string]]}
+                         :handler (partial handlers/search-products db)}}]
+       ["/import" {:post {:handler (partial handlers/import-csv db)}}]]]]
     {:data {:coercion malli-coercion/coercion
+            :muuntaja m/instance
             :middleware [swagger/swagger-feature
                          parameters/parameters-middleware
+                         muuntaja-mw/format-middleware
+                         multipart/multipart-middleware
                          coercion/coerce-exceptions-middleware
                          coercion/coerce-request-middleware
                          coercion/coerce-response-middleware]}})
