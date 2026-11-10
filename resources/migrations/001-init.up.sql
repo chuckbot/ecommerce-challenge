@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
+--;;
 CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sku VARCHAR(64) NOT NULL UNIQUE,
@@ -12,13 +12,13 @@ CREATE TABLE products (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+--;;
 CREATE INDEX idx_products_search ON products USING GIN (
     to_tsvector('english', coalesce(name, '') || ' ' || coalesce(sku, '') || ' ' || coalesce(description, ''))
 );
-
+--;;
 CREATE INDEX idx_products_category ON products (category);
-
+--;;
 CREATE TABLE orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     total_amount NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
@@ -26,7 +26,7 @@ CREATE TABLE orders (
     payment_status VARCHAR(32) NOT NULL DEFAULT 'COMPLETED',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+--;;
 CREATE TABLE order_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,

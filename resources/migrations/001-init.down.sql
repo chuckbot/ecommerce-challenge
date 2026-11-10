@@ -1,3 +1,5 @@
-DROP TABLE order_items;
-DROP TABLE orders;
-DROP TABLE products;
+DROP TABLE IF EXISTS order_items;
+--;;
+DROP TABLE IF EXISTS orders;
+--;;
+DROP TABLE IF EXISTS products;
