@@ -17,24 +17,8 @@ This is a corporate coding challenge for a Full-Stack E-Commerce application. Th
 
 ## 3. Current Progress
 - Scaffolding complete.
-- **Database:** Migrations created (`001-init.up.sql`) with strict `CHECK` constraints. `db.core` and `db.products` (upsert logic) implemented.
-- **Domain:** Pure CSV parser (`domain/csv_import.clj`) built to detect anomalies line-by-line and return structured reports (`{:valid [...] :invalid [...]}`).
-- **HTTP:** Reitit router configured with Multipart upload support and Malli coercion.
-- **Frontend:** Basic re-frame setup done, static HTML and Tailwind CSS configured. `shadow-cljs` compiles successfully.
-
-## 4. Current Blocker (Priority #1)
-The backend server fails to start due to a database authentication error during Integrant initialization:
-`org.postgresql.util.PSQLException: FATAL: password authentication failed for user "ecommerce"`
-
-**Context of the blocker:**
-- `docker-compose.yml` sets `POSTGRES_USER: ecommerce`, `POSTGRES_PASSWORD: password123`.
-- `config.edn` uses Aero: `:jdbc-url #or [#env DATABASE_URL "jdbc:postgresql://localhost:5432/ecommerce_db?user=ecommerce&password=password123"]`.
-- The system host (WSL/Ubuntu) does NOT have a local Postgres running.
-- We have already tried `docker compose down -v`, `docker volume rm`, and restarting.
-- **Agent Task:** Diagnose and fix the DB connection issue between Integrant/HikariCP and the Dockerized PostgreSQL instance before writing any new features.
-
-## 5. Next Steps (After DB Blocker is Fixed)
-1. **Frontend CSV Upload:** Implement the Drag & Drop UI in Reagent to upload the CSV file to the `/api/products/import` endpoint.
-2. **Frontend Catalog:** Implement the UI to fetch (`GET /api/products`) and search (`GET /api/products/search?q=...`) the products.
-3. **Purchase Flow (Backend):** Implement the `orders` adapter to handle atomic purchases using `SELECT ... FOR UPDATE` to prevent race conditions on stock.
-4. **Readme Finalization:** Ensure the `README.md` and `DATA_QUALITY_AND_BUGS.md` detail all the CSV anomalies handled by the system.
+- **Database:** Migrations (`001-init.up.sql` & `001-init.down.sql`) configured with Migratus `--;;` separators and strict `CHECK` constraints. `db.core`, `db.products` (full CRUD + search + upsert), and `db.orders` (atomic purchase with `SELECT ... FOR UPDATE`) implemented.
+- **Domain:** Pure CSV parser (`domain/csv_import.clj`) and Malli schemas (`schema.cljc`) built to detect anomalies line-by-line, deduplicate in-batch SKUs, and return structured audit reports.
+- **HTTP:** Reitit router configured with Multipart upload support, Malli coercion, Swagger UI (`/api/docs`), and static SPA serving (`/`).
+- **Frontend:** Complete ClojureScript/Reagent/re-frame SPA with Catalog CRUD modal, hybrid search & category filters, Drag & Drop CSV import with detailed anomaly report, and Cart/Checkout + Order history.
+- **Docker & Build:** `build.clj`, `Dockerfile`, and `docker-compose.yml` configured for end-to-end execution via `docker compose up --build`.
