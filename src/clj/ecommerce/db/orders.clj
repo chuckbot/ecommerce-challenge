@@ -1,61 +1,31 @@
 (ns ecommerce.db.orders
-  (:require [next.jdbc :as jdbc]
+  (:require [ecommerce.domain.orders :as domain.orders]
+            [next.jdbc :as jdbc]
             [next.jdbc.result-set :as rs]))
 
 (def db-opts {:builder-fn rs/as-unqualified-kebab-maps})
 
-(defn normalize-items [items]
-  (->> items
-       (group-by :product-id)
-       (map (fn [[pid group]]
-              {:product-id pid
-               :quantity (reduce + 0 (map :quantity group))}))
-       (sort-by (comp str :product-id))
-       vec))
-
 (defn create-order! [db items]
-  (let [normalized (normalize-items items)]
+  (let [normalized (domain.orders/normalize-items items)]
     (jdbc/with-transaction [tx db]
       (let [locked-items
-            (mapv (fn [{:keys [product-id quantity]}]
+            (mapv (fn [{:keys [product-id] :as item}]
                     (let [product (jdbc/execute-one!
                                    tx
                                    ["SELECT * FROM products WHERE id = ? FOR UPDATE" product-id]
                                    db-opts)]
-                      (when-not product
-                        (throw (ex-info (str "Product not found: " product-id)
-                                        {:type :not-found
-                                         :product-id product-id})))
-                      (when (< (:stock product) quantity)
-                        (throw (ex-info (str "Insufficient stock for " (:name product)
-                                             " (available: " (:stock product)
-                                             ", requested: " quantity ")")
-                                        {:type :insufficient-stock
-                                         :product-id product-id
-                                         :sku (:sku product)
-                                         :name (:name product)
-                                         :available (:stock product)
-                                         :requested quantity})))
-                      {:product product
-                       :quantity quantity
-                       :line-amount (.multiply (bigdec (:price product)) (bigdec quantity))
-                       :line-weight (.multiply (bigdec (:weight-kg product)) (bigdec quantity))}))
+                      (domain.orders/validate-and-build-line-item product item)))
                   normalized)
-            total-amount (reduce #(.add ^BigDecimal %1 ^BigDecimal %2)
-                                 (bigdec 0)
-                                 (map :line-amount locked-items))
-            total-weight (reduce #(.add ^BigDecimal %1 ^BigDecimal %2)
-                                 (bigdec 0)
-                                 (map :line-weight locked-items))
+            {:keys [total-amount total-weight-kg]} (domain.orders/calculate-order-totals locked-items)
             order (jdbc/execute-one!
                    tx
                    ["INSERT INTO orders (total_amount, total_weight_kg, payment_status)
                      VALUES (?, ?, 'COMPLETED')
                      RETURNING *"
-                    total-amount total-weight]
+                    total-amount total-weight-kg]
                    db-opts)
             order-items
-            (mapv (fn [{:keys [product quantity]}]
+            (mapv (fn [{:keys [product quantity unit-price]}]
                     (jdbc/execute-one!
                      tx
                      ["UPDATE products
@@ -72,7 +42,7 @@
                                  (:id product)
                                  (:sku product)
                                  quantity
-                                 (bigdec (:price product))]
+                                 unit-price]
                                 db-opts)]
                       (assoc item :product-name (:name product))))
                   locked-items)]

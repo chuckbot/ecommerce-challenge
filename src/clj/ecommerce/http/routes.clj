@@ -27,29 +27,32 @@
      ["/swagger.json"
       {:get {:no-doc true
              :swagger {:info {:title "Enterprise E-Commerce API"
+                              :description "Hexagonal Architecture E-Commerce REST API (Products CRUD, Fault-Tolerant CSV Import, Full-Text Search, and Atomic Orders)"
                               :version "1.0.0"}}
              :handler (swagger/create-swagger-handler)}}]
      ["/api"
       ["/products"
-       ["" {:get {:summary "List all products"
+       {:swagger {:tags ["Products"]}}
+       ["" {:get {:summary "List all products ordered by most recently updated"
                   :handler (partial handlers/list-products db)}
-            :post {:summary "Create a new product"
+            :post {:summary "Create a new product in the catalog"
                    :handler (partial handlers/create-product db)}}]
-       ["/search" {:get {:summary "Search products by term"
+       ["/search" {:get {:summary "Search products via PostgreSQL Full-Text Search and ILIKE"
                          :parameters {:query [:map [:q {:optional true} :string]]}
                          :handler (partial handlers/search-products db)}}]
-       ["/import" {:post {:summary "Import products from uploaded CSV file"
+       ["/import" {:post {:summary "Import products from a multipart uploaded CSV file"
                           :handler (partial handlers/import-csv db)}}]
-       ["/import-sample" {:post {:summary "Import products from bundled sample CSV"
+       ["/import-sample" {:post {:summary "Import products from the bundled challenge sample CSV"
                                  :handler (partial handlers/import-sample-csv db)}}]
-       ["/:id" {:put {:summary "Update a product by ID"
+       ["/:id" {:put {:summary "Update an existing product by UUID"
                       :handler (partial handlers/update-product db)}
-                :delete {:summary "Delete a product by ID"
+                :delete {:summary "Delete a product by UUID"
                          :handler (partial handlers/delete-product db)}}]]
       ["/orders"
-       ["" {:get {:summary "List recent orders"
+       {:swagger {:tags ["Orders"]}}
+       ["" {:get {:summary "List recent completed purchase orders with line items"
                   :handler (partial handlers/list-orders db)}
-            :post {:summary "Purchase products atomically"
+            :post {:summary "Execute an atomic purchase transaction (SELECT ... FOR UPDATE)"
                    :handler (partial handlers/create-order db)}}]]]]
     {:conflicts nil
      :data {:coercion malli-coercion/coercion

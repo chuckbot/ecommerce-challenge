@@ -48,8 +48,8 @@ With the PostgreSQL container running (`docker compose up -d db`), execute the c
 clojure -M:test
 ```
 
-The test suite (`test/clj/ecommerce/`) runs **72 assertions** across:
-- **Domain & CSV Parser Unit Tests (`ecommerce.domain-test`):** Happy path coercions, currency stripping (`$29.99`), XSS tag rejection, negative stock/price rejection, in-batch SKU deduplication, and exact verification against all 98 lines of `Code Challenge E-Commerce.csv`.
+The test suite (`test/clj/ecommerce/`) runs **81 assertions across 7 test suites**:
+- **Domain & CSV Parser Unit Tests (`ecommerce.domain-test`):** Happy path coercions, currency stripping (`$29.99`), XSS tag rejection, negative stock/price rejection, in-batch SKU deduplication, deterministic order item normalization & `BigDecimal` calculations (`ecommerce.domain.orders`), and exact verification against all 98 lines of `Code Challenge E-Commerce.csv`.
 - **Database & HTTP Integration Tests (`ecommerce.integration-test`):** Full Product CRUD lifecycle, Full-Text + `ILIKE` search, duplicate SKU `409 Conflict`, SQL injection immunity, multi-item atomic order calculations, transactional rollback on insufficient stock, and a **10-thread concurrent purchase race-condition test** verifying `SELECT ... FOR UPDATE` never oversells inventory.
 
 ---

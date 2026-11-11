@@ -2,7 +2,9 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ecommerce.domain.csv-import :as csv-import]
-            [ecommerce.schema :as schema]))
+            [ecommerce.domain.orders :as domain.orders]
+            [ecommerce.schema :as schema])
+  (:import (java.util UUID)))
 
 (deftest product-input-validation-test
   (testing "Happy path: valid product input with string numbers is coerced and validated"
@@ -172,3 +174,30 @@
         (is (= 2 (:skipped res)))
         (is (= 7 (count (:invalid res))))
         (is (= [7 16 20 25 41 50 52] error-lines))))))
+
+(deftest domain-orders-logic-test
+  (testing "normalize-items aggregates duplicate product IDs and sorts deterministically to prevent deadlocks"
+    (let [u1 (UUID/fromString "bbbbbbbb-0000-0000-0000-000000000002")
+          u2 (UUID/fromString "aaaaaaaa-0000-0000-0000-000000000001")
+          normalized (domain.orders/normalize-items
+                      [{:product-id u1 :quantity 2}
+                       {:product-id u2 :quantity 1}
+                       {:product-id u1 :quantity 3}
+                       {:product-id u2 :quantity 0}])]
+      (is (= [{:product-id u2 :quantity 1}
+              {:product-id u1 :quantity 5}]
+             normalized))))
+
+  (testing "validate-and-build-line-item and calculate-order-totals compute exact BigDecimal amounts"
+    (let [pid (UUID/randomUUID)
+          product {:id pid :sku "SKU-1" :name "Coffee" :price 18.75M :stock 10 :weight-kg 1.000M}
+          line (domain.orders/validate-and-build-line-item product {:product-id pid :quantity 4})
+          totals (domain.orders/calculate-order-totals [line])]
+      (is (= 75.00M (:line-amount line)))
+      (is (= 4.000M (:line-weight line)))
+      (is (= 75.00M (:total-amount totals)))
+      (is (= 4.000M (:total-weight-kg totals)))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Insufficient stock"
+           (domain.orders/validate-and-build-line-item product {:product-id pid :quantity 11}))))))

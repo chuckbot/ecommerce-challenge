@@ -5,8 +5,7 @@ COPY package.json package-lock.json shadow-cljs.edn ./
 RUN npm install
 COPY src/cljs src/cljs
 COPY src/cljc src/cljc
-COPY resources/public/index.html resources/public/index.html
-COPY resources/public/css resources/public/css
+COPY resources/public resources/public
 RUN npx shadow-cljs release app
 
 FROM clojure:tools-deps-alpine AS backend-builder

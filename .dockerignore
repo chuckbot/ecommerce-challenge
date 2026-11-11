@@ -1,0 +1,13 @@
+.git
+.gitignore
+.cpcache
+.shadow-cljs
+.clj-kondo
+.lsp
+node_modules
+target
+resources/public/js/compiled
+AGENTS.md
+README.md
+DATA_QUALITY_AND_BUGS.md
+test

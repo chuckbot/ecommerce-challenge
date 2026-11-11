@@ -2,6 +2,7 @@
   (:require [ajax.core :as ajax]
             [ajax.easy :as ajax-easy]
             [clojure.string :as str]
+            [ecommerce.schema :as schema]
             [re-frame.core :as rf]))
 
 (def empty-product-form
@@ -14,6 +15,12 @@
    :stock ""
    :weight-kg ""})
 
+(defn format-validation-errors [errors]
+  (->> errors
+       (map (fn [[k msgs]]
+              (str (str/upper-case (name k)) ": " (str/join ", " msgs))))
+       (str/join " | ")))
+
 (rf/reg-event-fx
  :initialize-db
  (fn [_ _]
@@ -22,6 +29,9 @@
          :loading? false
          :search-term ""
          :category-filter "ALL"
+         :sort-by :recent
+         :current-page 1
+         :page-size 15
          :active-panel :catalog
          :cart {}
          :last-order nil
@@ -53,7 +63,31 @@
 (rf/reg-event-db
  :set-category-filter
  (fn [db [_ category]]
-   (assoc db :category-filter category)))
+   (assoc db
+          :category-filter category
+          :current-page 1)))
+
+(rf/reg-event-db
+ :set-sort-by
+ (fn [db [_ sort-key]]
+   (assoc db
+          :sort-by (keyword sort-key)
+          :current-page 1)))
+
+(rf/reg-event-db
+ :set-page
+ (fn [db [_ page]]
+   (assoc db :current-page (max 1 page))))
+
+(rf/reg-event-fx
+ :reset-catalog-filters
+ (fn [{:keys [db]} _]
+   {:db (assoc db
+               :search-term ""
+               :category-filter "ALL"
+               :sort-by :recent
+               :current-page 1)
+    :dispatch [:fetch-products]}))
 
 (rf/reg-event-fx
  :fetch-products
@@ -76,7 +110,10 @@
  :search-products
  (fn [{:keys [db]} [_ term]]
    (let [cleaned (str/trim (or term ""))]
-     {:db (assoc db :search-term term :loading? true)
+     {:db (assoc db
+                 :search-term term
+                 :current-page 1
+                 :loading? true)
       :http-xhrio {:method :get
                    :uri (if (str/blank? cleaned)
                           "/api/products"
@@ -124,35 +161,16 @@
  :save-product
  (fn [{:keys [db]} _]
    (let [{:keys [mode form]} (:product-modal db)
-         payload {:sku (str/trim (str (:sku form)))
-                  :name (str/trim (str (:name form)))
-                  :description (str/trim (str (:description form)))
-                  :category (str/trim (str (:category form)))
-                  :price (js/parseFloat (str (:price form)))
-                  :stock (js/parseInt (str (:stock form)) 10)
-                  :weight-kg (js/parseFloat (str (:weight-kg form)))}]
-     (cond
-       (or (str/blank? (:sku payload))
-           (str/blank? (:name payload))
-           (str/blank? (:category payload)))
-       {:db (assoc-in db [:product-modal :error] "SKU, Name, and Category are required.")}
-
-       (or (js/isNaN (:price payload)) (< (:price payload) 0))
-       {:db (assoc-in db [:product-modal :error] "Price must be a number greater than or equal to 0.")}
-
-       (or (js/isNaN (:stock payload)) (< (:stock payload) 0))
-       {:db (assoc-in db [:product-modal :error] "Stock must be an integer greater than or equal to 0.")}
-
-       (or (js/isNaN (:weight-kg payload)) (< (:weight-kg payload) 0))
-       {:db (assoc-in db [:product-modal :error] "Weight (kg) must be a number greater than or equal to 0.")}
-
-       :else
+         validation (schema/validate-product-input form)]
+     (if-not (:valid? validation)
+       {:db (assoc-in db [:product-modal :error]
+                      (format-validation-errors (:errors validation)))}
        {:db (assoc db :loading? true)
         :http-xhrio {:method (if (= mode :create) :post :put)
                      :uri (if (= mode :create)
                             "/api/products"
                             (str "/api/products/" (:id form)))
-                     :params payload
+                     :params (:data validation)
                      :format (ajax/json-request-format)
                      :response-format (ajax/json-response-format {:keywords? true})
                      :on-success [:save-product-success mode]
@@ -333,6 +351,7 @@
  (fn [{:keys [db]} [_ result]]
    {:db (-> db
             (assoc :importing? false
+                   :current-page 1
                    :import-status result)
             (assoc :notification {:type :success
                                   :message (str "CSV Import completed: "

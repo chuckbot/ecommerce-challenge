@@ -5,4 +5,6 @@ target/
 build/
 resources/public/js/compiled/
 .DS_Store
-.clj-kondo/.cache/
+.clj-kondo/
+.lsp/
+AGENTS.md
